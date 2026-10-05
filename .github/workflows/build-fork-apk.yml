@@ -23,7 +23,15 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build debug APK
-        run: ./gradlew :AnkiDroid:assembleDebug --no-daemon
+        # The Kotlin compiler's own daemon process defaults to a small heap. On a clean CI
+        # checkout the whole :AnkiDroid module compiles in one go, and unrelated, lambda-heavy
+        # methods elsewhere in the codebase (e.g. reviewreminders) can OOM ("GC overhead limit
+        # exceeded") during bytecode codegen if that heap is too small. Give both the Gradle
+        # client JVM and the separate Kotlin daemon more room; CI-only, doesn't touch
+        # gradle.properties (which also governs local/Android Studio builds).
+        env:
+          GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
+        run: ./gradlew :AnkiDroid:assembleDebug --no-daemon -Pkotlin.daemon.jvm.options=-Xmx4g
 
       - uses: actions/upload-artifact@v4
         with:
