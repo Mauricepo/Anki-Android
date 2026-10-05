@@ -1,0 +1,29 @@
+name: Build fork debug APK
+
+# Personal fork addition: builds a downloadable debug APK on every push to main,
+# or on demand, without touching AnkiDroid's own (signing/secrets-dependent) CI.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build debug APK
+        run: ./gradlew :AnkiDroid:assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AnkiDroid-debug-apk
+          path: AnkiDroid/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

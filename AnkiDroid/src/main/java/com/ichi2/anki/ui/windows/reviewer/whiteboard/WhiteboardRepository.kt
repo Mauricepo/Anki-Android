@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package com.ichi2.anki.ui.windows.reviewer.whiteboard
+
+import android.content.SharedPreferences
+import android.graphics.Color
+import androidx.core.content.edit
+
+/**
+ * Repository for handling data operations, specifically for saving and loading
+ * whiteboard settings from SharedPreferences.
+ */
+class WhiteboardRepository(
+    private val sharedPreferences: SharedPreferences,
+) {
+    fun saveBrushes(
+        brushes: List<WhiteboardTool.Brush>,
+        isDarkMode: Boolean,
+    ) {
+        val key = if (isDarkMode) KEY_BRUSHES_DARK else KEY_BRUSHES_LIGHT
+        sharedPreferences.edit { putString(key, brushes.toPreferenceString()) }
+    }
+
+    fun loadBrushes(isDarkMode: Boolean): List<WhiteboardTool.Brush> {
+        val key = if (isDarkMode) KEY_BRUSHES_DARK else KEY_BRUSHES_LIGHT
+        val saved = sharedPreferences.getString(key, null)
+        return if (saved.isNullOrEmpty()) {
+            getDefaultBrushes(isDarkMode)
+        } else {
+            saved.fromPreferenceString()
+        }
+    }
+
+    fun saveLastActiveBrushIndex(
+        index: Int,
+        isDarkMode: Boolean,
+    ) {
+        val key = if (isDarkMode) KEY_LAST_ACTIVE_BRUSH_INDEX_DARK else KEY_LAST_ACTIVE_BRUSH_INDEX_LIGHT
+        sharedPreferences.edit { putInt(key, index) }
+    }
+
+    fun loadLastActiveBrushIndex(isDarkMode: Boolean): Int {
+        val key = if (isDarkMode) KEY_LAST_ACTIVE_BRUSH_INDEX_DARK else KEY_LAST_ACTIVE_BRUSH_INDEX_LIGHT
+        return sharedPreferences.getInt(key, 0)
+    }
+
+    var inkEraserWidth: Float
+        get() = sharedPreferences.getFloat(KEY_INK_ERASER_WIDTH, DEFAULT_ERASER_WIDTH)
+        set(value) = sharedPreferences.edit { putFloat(KEY_INK_ERASER_WIDTH, value) }
+
+    var strokeEraserWidth: Float
+        get() = sharedPreferences.getFloat(KEY_STROKE_ERASER_WIDTH, DEFAULT_ERASER_WIDTH)
+        set(value) = sharedPreferences.edit { putFloat(KEY_STROKE_ERASER_WIDTH, value) }
+
+    var eraserMode: EraserMode
+        get() {
+            val value = sharedPreferences.getString(KEY_ERASER_MODE, EraserMode.INK.name) ?: EraserMode.INK.name
+            return EraserMode.entries.firstOrNull { it.name == value } ?: EraserMode.INK
+        }
+        set(value) = sharedPreferences.edit { putString(KEY_ERASER_MODE, value.name) }
+
+    var stylusOnlyMode: Boolean
+        get() = sharedPreferences.getBoolean(KEY_STYLUS_ONLY_MODE, false)
+        set(value) = sharedPreferences.edit { putBoolean(KEY_STYLUS_ONLY_MODE, value) }
+
+    var toolbarAlignment: ToolbarAlignment
+        get() {
+            val value = sharedPreferences.getString(KEY_TOOLBAR_ALIGNMENT, ToolbarAlignment.BOTTOM.name) ?: ToolbarAlignment.BOTTOM.name
+            return ToolbarAlignment.entries.firstOrNull { it.name == value } ?: ToolbarAlignment.BOTTOM
+        }
+        set(value) = sharedPreferences.edit { putString(KEY_TOOLBAR_ALIGNMENT, value.name) }
+
+    var isToolbarShown: Boolean
+        get() = sharedPreferences.getBoolean(KEY_IS_TOOLBAR_SHOWN, true)
+        set(value) = sharedPreferences.edit { putBoolean(KEY_IS_TOOLBAR_SHOWN, value) }
+
+    private fun List<WhiteboardTool.Brush>.toPreferenceString(): String = this.joinToString(",") { "${it.color}|${it.width}" }
+
+    private fun String.fromPreferenceString(): List<WhiteboardTool.Brush> =
+        this.split(',').mapNotNull {
+            val parts = it.split('|')
+            if (parts.size == 2) {
+                try {
+                    WhiteboardTool.Brush(color = parts[0].toInt(), width = parts[1].toFloat())
+                } catch (_: NumberFormatException) {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+
+    companion object {
+        private const val KEY_BRUSHES_LIGHT = "brushes_light"
+        private const val KEY_LAST_ACTIVE_BRUSH_INDEX_LIGHT = "last_active_brush_index_light"
+        private const val KEY_BRUSHES_DARK = "brushes_dark"
+        private const val KEY_LAST_ACTIVE_BRUSH_INDEX_DARK = "last_active_brush_index_dark"
+        private const val KEY_INK_ERASER_WIDTH = "ink_eraser_width"
+        private const val KEY_STROKE_ERASER_WIDTH = "stroke_eraser_width"
+        private const val KEY_ERASER_MODE = "eraser_mode"
+        private const val KEY_STYLUS_ONLY_MODE = "stylus_only_mode"
+        private const val KEY_TOOLBAR_ALIGNMENT = "toolbar_alignment"
+        private const val KEY_IS_TOOLBAR_SHOWN = "is_toolbar_shown"
+        const val DEFAULT_STROKE_WIDTH = 10f
+        const val DEFAULT_ERASER_WIDTH = 30f
+
+        fun getDefaultBrushes(isDarkMode: Boolean): List<WhiteboardTool.Brush> =
+            if (isDarkMode) {
+                listOf(
+                    WhiteboardTool.Brush(color = Color.WHITE, width = DEFAULT_STROKE_WIDTH),
+                )
+            } else {
+                listOf(
+                    WhiteboardTool.Brush(color = Color.BLACK, width = DEFAULT_STROKE_WIDTH),
+                )
+            }
+    }
+}
